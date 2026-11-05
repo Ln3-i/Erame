@@ -1,0 +1,24 @@
+{
+    "name": "Game",
+    "rootNamespace": "Game",
+    "references": [
+        "Erame.Core",
+        "Erame.Runtime",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.rlabrecque.steamworks.net",
+            "expression": "",
+            "define": "STEAMWORKS_AVAILABLE"
+        }
+    ],
+    "noEngineReferences": false
+}

@@ -23,6 +23,18 @@ namespace Erame.Core{
         /// <summary>容器内部错误（构造失败、Dispose 失败等）的接收者，设置后不再直接输出到控制台。</summary>
         public Action<string> ErrorReporter { get; set; }
 
+        /// <summary>是否已调用 Build()。</summary>
+        public bool IsBuilt => _built;
+
+        /// <summary>是否已释放。</summary>
+        public bool IsDisposed => _disposed;
+
+        /// <summary>只读诊断：按注册顺序返回服务类型。</summary>
+        public IReadOnlyList<Type> GetRegisteredServiceTypes() => new List<Type>(_registrationOrder);
+
+        /// <summary>只读诊断：按实际创建顺序返回服务类型（即初始化顺序）。</summary>
+        public IReadOnlyList<Type> GetCreationOrder() => new List<Type>(_creationOrder);
+
         public void RegisterSingleton<T>(T instance) where T : class{
             if (_built) throw new InvalidOperationException("Cannot register after Build().");
             var type = typeof(T);

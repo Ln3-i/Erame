@@ -29,6 +29,15 @@ namespace Erame.Runtime.Config{
         public uint SteamAppId => steamAppId;
         public LogLevel LogLevel => logLevel;
 
+        /// <summary>是否已在资产中填写存档密钥（未填写时会使用 PlayerPrefs 中的开发期密钥）。</summary>
+        public bool HasConfiguredSaveKey => !string.IsNullOrEmpty(saveKey);
+
+        /// <summary>已配置密钥的 UTF-8 字节数，未配置时为 0。</summary>
+        public int ConfiguredSaveKeyByteCount => HasConfiguredSaveKey ? Encoding.UTF8.GetByteCount(saveKey) : 0;
+
+        /// <summary>是否仍在使用 Steam 的演示 AppID（480）。</summary>
+        public bool IsDevSteamAppId => steamAppId == DevSteamAppId;
+
         /// <summary>未在场景中指定时使用的运行时默认配置（不落盘，仅当前会话有效）。</summary>
         public static ErameSettings Default{
             get{

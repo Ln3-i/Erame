@@ -43,7 +43,7 @@ Packages/
 ```json
 {
   "dependencies": {
-    "com.erame.framework": "https://github.com/<your-account>/<your-repo>.git?path=/Packages/com.erame.framework"
+    "com.erame.framework": "https://github.com/<your-account>/<your-repo>.git?path=/Packages/com.erame.framework#v0.2.0"
   }
 }
 ```
@@ -51,7 +51,7 @@ Packages/
 需要 Steam 支持时再额外添加：
 
 ```json
-"com.erame.platform.steam": "https://github.com/<your-account>/<your-repo>.git?path=/Packages/com.erame.platform.steam"
+"com.erame.platform.steam": "https://github.com/<your-account>/<your-repo>.git?path=/Packages/com.erame.platform.steam#v0.2.0"
 ```
 
 也可以把包目录打成 `.tgz` 后通过 `Packages/manifest.json` 的本地路径 / `Add package from tarball` 安装。
@@ -143,6 +143,24 @@ GameBootstrap.OnDestroy()
 - 写入流程：主线程快照 → 后台线程加密 → 临时文件 → 原子替换，并保留 `.bak`
 - 保存/读档支持 `CancellationToken`，取消时不会破坏主存档
 - 旧版本存档可通过 `FileSaveService.RawDataMigrator` 注册迁移逻辑
+
+## 编辑器菜单
+
+| 菜单 | 作用 |
+|---|---|
+| `Erame/配置/创建框架设置` | 在选中目录创建 `ErameSettings`，并生成 32 字节密钥 |
+| `Erame/配置/校验框架设置` | 检查密钥长度、AppID、日志级别 |
+| `Erame/配置/生成开发期密钥` | 为当前设置重新生成密钥 |
+| `Erame/配置/定位当前设置` | 在 Project/Inspector 中选中当前设置 |
+| `Erame/诊断/框架自检` | 检查 Addressables、Input System、TMP、Steamworks、存档目录与包版本 |
+| `Erame/诊断/服务容器快照` | Play 模式下导出服务注册与初始化顺序 |
+| `Erame/诊断/事件订阅统计` | 列出各事件类型的订阅者数量 |
+| `Erame/诊断/检查存档` | 列出存档文件、大小与修改时间 |
+| `Erame/平台/同步 AppID 到 steam_appid.txt` | 把设置中的 AppID 写入项目根目录 |
+| `Erame/构建/发布前检查` | 校验密钥、AppID、日志级别与 Steam 配置 |
+| `Erame/帮助/打开框架文档` | 打开包内 README / API 文档 |
+| `Erame/帮助/检查包更新` | 对比本地版本与 Git 远端标签 |
+| `Erame/平台切换/Steam`、`Erame/平台切换/原生模式` | 切换 `USE_STEAM` 宏 |
 
 ## 测试
 

@@ -70,6 +70,17 @@ namespace Erame.Core{
             }
         }
 
+        /// <summary>只读诊断：返回各事件类型的订阅者数量（按事件类型名排序）。</summary>
+        public IReadOnlyList<KeyValuePair<Type, int>> GetSubscriptionCounts(){
+            var snapshot = _snapshot;
+            var counts = new List<KeyValuePair<Type, int>>(snapshot.Count);
+            foreach (var kv in snapshot){
+                counts.Add(new KeyValuePair<Type, int>(kv.Key, kv.Value.Length));
+            }
+            counts.Sort((a, b) => string.CompareOrdinal(a.Key.Name, b.Key.Name));
+            return counts;
+        }
+
         // 发布事件
         public void Publish<T>(in T evt) where T : struct{
             // 无锁读取快照：即使在订阅/取消订阅期间也能安全遍历

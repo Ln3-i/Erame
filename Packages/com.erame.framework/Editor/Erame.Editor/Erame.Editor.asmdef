@@ -1,7 +1,10 @@
 {
     "name": "Erame.Editor",
     "rootNamespace": "Erame.Editor",
-    "references": [],
+    "references": [
+        "Erame.Core",
+        "Erame.Runtime"
+    ],
     "includePlatforms": [
         "Editor"
     ],

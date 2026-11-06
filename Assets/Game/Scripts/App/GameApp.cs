@@ -1,17 +1,20 @@
-using UnityEngine;
 using Erame.Core;
 using Erame.Runtime.Config;
-using Erame.Runtime.Services;
-using Game.Scripts.Gameplay.Flow;
-using Game.Scripts.Modules;
 
 namespace Game.Scripts{
+    /// <summary>
+    /// 业务门面：聚合服务访问，供玩法代码使用。
+    /// 生命周期与服务注册已由 <see cref="GameEntry"/>（入口程序）承载，
+    /// 本类只做静态转发。
+    /// </summary>
     public static class GameApp{
-        public static ServiceContainer Container { get; private set; }
+        private static GameEntry _entry;
+
+        public static ServiceContainer Container => _entry?.Container;
         public static bool IsStarted => Container != null;
 
         /// <summary>本次启动使用的框架配置；未显式传入时使用运行时默认配置。</summary>
-        public static ErameSettings Settings { get; private set; }
+        public static ErameSettings Settings => _entry?.Settings;
 
         // ================= 框架工具 =================
         public static ILogService Log => Container.Get<ILogService>();
@@ -31,34 +34,23 @@ namespace Game.Scripts{
         public static IPlatformService Platform => Container.Get<IPlatformService>();
         public static IGameStateMachine Flow => Container.Get<IGameStateMachine>();
         public static IAudioService Audio => Container.Get<IAudioService>();
-        
+
         public static void Start(ErameSettings settings = null){
-            // 初始化
-            if (Container != null) return; 
-            Settings = settings != null ? settings : ErameSettings.Default;
-            Container = new ServiceContainer();
-            Container.ErrorReporter = message => UnityEngine.Debug.LogError(message);
+            if (_entry != null) return;
 
-            // 通过模块注册服务：注册顺序决定实例创建顺序，容器内部会自动完成依赖排序
-            IModule[] modules = { new FrameworkModule(Settings), new GameplayModule(Settings), new PlatformModule(Settings) };
-            foreach (var module in modules){
-                module.Configure(Container);
-            }
-
-            // 构建并初始化服务
-            Container.Build();
-            Container.InitializeAll();
-
-            // 注册游戏流程
-            var flow = Container.Get<IGameStateMachine>();
-            FlowRegistry.RegisterAll(flow);
+            var entry = new GameEntry();
+            entry.Start(settings);   // 启动失败时 entry 内部已回滚，这里不持有半成品
+            _entry = entry;
         }
 
+        /// <summary>主循环，由 GameBootstrap 驱动。</summary>
+        public static void Update() => _entry?.Update();
+
         public static void Quit(){
-            if (Container == null) return;
-            
-            Container.Dispose();
-            Container = null;
+            if (_entry == null) return;
+
+            _entry.Quit();
+            _entry = null;
         }
     }
 }

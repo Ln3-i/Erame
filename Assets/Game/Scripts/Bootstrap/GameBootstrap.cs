@@ -14,12 +14,8 @@ namespace Game.Scripts.Bootstrap{
         }
 
         private void Update(){
-            if (!GameApp.IsStarted) return;
-
-            // 这些访问器在服务缺失时会抛异常，因此不做 null 条件判断，让问题尽早暴露
-            GameApp.Tick.Update(GameApp.Time.DeltaTime);
-            GameApp.Flow.Update();
-            GameApp.Platform.Update();
+            // Tick / 流程状态机 / 平台的推进由入口类 ErameEntry 的默认主循环处理
+            GameApp.Update();
         }
 
         private void OnDestroy(){

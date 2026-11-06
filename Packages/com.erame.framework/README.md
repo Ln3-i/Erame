@@ -43,7 +43,7 @@ Packages/
 ```json
 {
   "dependencies": {
-    "com.erame.framework": "https://github.com/<your-account>/<your-repo>.git?path=/Packages/com.erame.framework#v0.2.0"
+    "com.erame.framework": "https://github.com/<your-account>/<your-repo>.git?path=/Packages/com.erame.framework#v0.3.0"
   }
 }
 ```
@@ -51,7 +51,7 @@ Packages/
 需要 Steam 支持时再额外添加：
 
 ```json
-"com.erame.platform.steam": "https://github.com/<your-account>/<your-repo>.git?path=/Packages/com.erame.platform.steam#v0.2.0"
+"com.erame.platform.steam": "https://github.com/<your-account>/<your-repo>.git?path=/Packages/com.erame.platform.steam#v0.3.0"
 ```
 
 也可以把包目录打成 `.tgz` 后通过 `Packages/manifest.json` 的本地路径 / `Add package from tarball` 安装。
@@ -61,21 +61,27 @@ Packages/
 1. 创建配置资产：`Assets → Create → Erame → 框架设置`，得到 `ErameSettings`。
 2. 填写 `SteamAppId`、日志级别与 32 字节存档密钥（留空会生成开发期密钥，仅适合本地调试）。
 3. 在启动场景的 `GameBootstrap` 上把该资产拖入 `Settings` 字段。
-4. 在业务程序集中注册服务：
+4. 重写入口类（可直接用 `Erame/快速开始/创建业务层示例` 生成标准模板）：
 
 ```csharp
-Container = new ServiceContainer();
-Container.ErrorReporter = message => Debug.LogError(message);
+public sealed class GameEntry : ErameEntry{
+    protected override void Configure(ServiceContainer container, ErameSettings settings){
+        // 框架默认装配 + 业务自定义服务注册
+        ErameInstaller.InstallFramework(container, settings);
+        ErameInstaller.InstallGameplay(container, settings, _ => new MyInputAdapter());
+        ErameInstaller.InstallPlatform(container, settings);
+        // container.RegisterSingleton<IMyService>(p => new MyService(...));
+    }
 
-ErameInstaller.InstallFramework(Container, settings);
-ErameInstaller.InstallGameplay(Container, settings, _ => new MyInputAdapter());
-ErameInstaller.InstallPlatform(Container, settings);
-
-Container.Build();
-Container.InitializeAll();
+    protected override void OnStarted(){
+        // 启动完成后的收尾，例如注册流程状态
+    }
+}
 ```
 
-或者沿用 `IModule` 写法，把三个模块的实现委托给 `ErameInstaller`（参见仓库中的 `GameModules.cs`）。
+场景中放一个持有入口的 `MonoBehaviour`：`Start()` 调 `_entry.Start(settings)`、`Update()` 调 `_entry.Update()`、`OnDestroy()` 调 `_entry.Quit()` 即可。
+
+也可以沿用 `IModule` 模块分组，把三个模块的实现委托给 `ErameInstaller`（参见仓库中的 `GameModules.cs` 与 `GameEntry.cs`）。
 
 ## 程序集依赖
 
@@ -91,19 +97,20 @@ Erame.Platform.Steam ──► Erame.Core ＋ Steamworks（仅 USE_STEAM 且 STE
 
 ```
 GameBootstrap.Start()
-└── GameApp.Start(settings)
+└── GameEntry : ErameEntry → Start(settings)
     ├── new ServiceContainer()
-    ├── 各 IModule.Configure(container)   ← Framework / Gameplay / Platform
-    ├── Build() + InitializeAll()          ← 容器按依赖拓扑序初始化，失败自动回滚
-    └── FlowRegistry.RegisterAll(flow)
+    ├── Configure(container, settings)      ← 开发者重写：模块与服务注册
+    ├── Build() + InitializeAll()            ← 容器按依赖拓扑序初始化，失败自动回滚
+    └── OnStarted()                          ← 开发者重写：启动收尾（如注册流程）
 
 GameBootstrap.Update()
-├── GameApp.Flow.Update()
-├── GameApp.Tick.Update(deltaTime)        ← ITickService 由主循环驱动
-└── GameApp.Platform.Update()
+└── ErameEntry.Update() → OnUpdate()
+    ├── GameApp.Flow.Update()
+    ├── GameApp.Tick.Update(deltaTime)       ← ITickService 由主循环驱动
+    └── GameApp.Platform.Update()
 
 GameBootstrap.OnDestroy()
-└── GameApp.Quit() → Container.Dispose()  ← 逆序 Dispose
+└── ErameEntry.Quit() → Container.Dispose()  ← 逆序 Dispose
 ```
 
 ## 服务一览
@@ -152,6 +159,7 @@ GameBootstrap.OnDestroy()
 | `Erame/配置/校验框架设置` | 检查密钥长度、AppID、日志级别 |
 | `Erame/配置/生成开发期密钥` | 为当前设置重新生成密钥 |
 | `Erame/配置/定位当前设置` | 在 Project/Inspector 中选中当前设置 |
+| `Erame/快速开始/创建业务层示例` | 生成与本仓库一致的业务层目录架构 + 标准入口 `GameEntry` |
 | `Erame/诊断/框架自检` | 检查 Addressables、Input System、TMP、Steamworks、存档目录与包版本 |
 | `Erame/诊断/服务容器快照` | Play 模式下导出服务注册与初始化顺序 |
 | `Erame/诊断/事件订阅统计` | 列出各事件类型的订阅者数量 |

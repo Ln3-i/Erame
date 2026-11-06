@@ -1,13 +1,10 @@
 using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Reflection;
+using System.IO;
 using Erame.Core;
 using Erame.Runtime.Config;
 using UnityEditor;
 using UnityEditor.Build;
-using UnityEditor.PackageManager;
 using UnityEngine;
 
 namespace Erame.Editor{
@@ -55,33 +52,9 @@ namespace Erame.Editor{
             return defines.Split(';').Any(d => d.Trim() == symbol);
         }
 
-        /// <summary>
-        /// 在当前 AppDomain 中查找公开静态属性返回的 ServiceContainer。
-        /// 这样编辑器工具不需要依赖宿主工程的程序集（例如 ErameRuntime）。
-        /// </summary>
-        public static ServiceContainer FindActiveContainer(){
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies()){
-                Type[] types;
-                try{ types = assembly.GetTypes(); }
-                catch{ continue; }
-
-                foreach (var type in types){
-                    foreach (var property in type.GetProperties(BindingFlags.Public | BindingFlags.Static)){
-                        if (property.PropertyType != typeof(ServiceContainer)) continue;
-                        if (property.GetIndexParameters().Length != 0) continue;
-
-                        try{
-                            var value = property.GetValue(null) as ServiceContainer;
-                            if (value != null) return value;
-                        }
-                        catch{
-                            // 忽略读取失败的类型
-                        }
-                    }
-                }
-            }
-
-            return null;
+        /// <summary>当前运行中的服务容器（未运行时为 null）。直接读 ErameRuntime，无反射。</summary>
+        public static ServiceContainer GetRuntimeServices(){
+            return Erame.Runtime.Bootstrap.ErameRuntime.Services;
         }
 
         public static string FormatSize(long bytes){

@@ -19,7 +19,7 @@ namespace Erame.Editor{
             OpenDoc("API.md");
         }
 
-        [MenuItem("Erame/帮助/检查包更新", priority = 52)]
+        [MenuItem("Erame/检查更新", priority = 60)]
         public static void CheckUpdates(){
             var current = ErameEditorUtility.GetPackageVersion(ErameEditorUtility.FrameworkPackageName);
             if (current == null){

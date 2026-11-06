@@ -2,13 +2,21 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Reflection;
 using System.Text;
 
 namespace Erame.Core{
     public static class CsvParser{
-        // 解析 CSV 文本并生成 DataTable
-        public static DataTable<T> Parse<T>(string csvText, ILogService logger, char sep = ',') where T : class, IData, new(){
+        // 解析 CSV 文本并生成 DataTable。
+        // 不使用反射：行对象由 rowFactory 创建，单元格赋值由 applyColumn 显式完成。
+        public static DataTable<T> Parse<T>(
+            string csvText,
+            ILogService logger,
+            Func<T> rowFactory,
+            Action<T, string, string> applyColumn,
+            char sep = ',') where T : class, IData{
+            if (rowFactory == null) throw new ArgumentNullException(nameof(rowFactory));
+            if (applyColumn == null) throw new ArgumentNullException(nameof(applyColumn));
+
             var table = new DataTable<T>();
             if (string.IsNullOrWhiteSpace(csvText)) return table;
 
@@ -16,34 +24,19 @@ namespace Erame.Core{
             if (rows.Count < 2) return table;
 
             var headers = rows[0];
-            var props = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
-
-            // 建立列与属性的映射
-            var map = new PropertyInfo[headers.Length];
-            for (int c = 0; c < headers.Length; c++){
-                var name = headers[c].Trim();
-                for (int p = 0; p < props.Length; p++){
-                    if (string.Equals(props[p].Name, name, StringComparison.OrdinalIgnoreCase)){
-                        map[c] = props[p];
-                        break;
-                    }
-                }
-            }
 
             for (int i = 1; i < rows.Count; i++){
                 var cells = rows[i];
                 if (cells.Length == 1 && string.IsNullOrWhiteSpace(cells[0])) continue; // 跳过空行
                 if (cells.Length == 0) continue;
 
-                var row = new T();
+                var row = rowFactory();
+                if (row == null) continue;
 
-                for (int c = 0; c < cells.Length && c < map.Length; c++){
-                    var prop = map[c];
-                    if (prop == null || !prop.CanWrite) continue;
-
+                for (int c = 0; c < cells.Length && c < headers.Length; c++){
                     var raw = cells[c].Trim();
                     try{
-                        prop.SetValue(row, ConvertValue(raw, prop.PropertyType));
+                        applyColumn(row, headers[c].Trim(), raw);
                     }
                     catch (Exception ex){
                         logger.Warn($"[CsvParser] 第 {i + 1} 行，列 '{headers[c]}' 解析失败: {ex.Message}");
@@ -138,11 +131,17 @@ namespace Erame.Core{
             return rows;
         }
 
-        private static object ConvertValue(string raw, Type t){
+        /// <summary>把单元格文本转换为目标类型（供 applyColumn 使用）。</summary>
+        public static object ConvertValue(string raw, Type t){
             if (t == typeof(string)) return raw;
-            // 空单元格：值类型返回默认值（如 0 / false / 枚举第 0 项），引用类型返回 null
+            // 空单元格：常见值类型返回默认值，其余返回 null
             if (raw.Length == 0){
-                if (t.IsValueType) return Activator.CreateInstance(t);
+                if (t == typeof(int)) return 0;
+                if (t == typeof(float)) return 0f;
+                if (t == typeof(double)) return 0d;
+                if (t == typeof(long)) return 0L;
+                if (t == typeof(bool)) return false;
+                if (t.IsEnum) return Enum.GetValues(t).GetValue(0);
                 return null;
             }
             if (t == typeof(int)) return int.Parse(raw, CultureInfo.InvariantCulture);

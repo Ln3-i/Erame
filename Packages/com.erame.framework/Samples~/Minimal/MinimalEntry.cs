@@ -1,15 +1,20 @@
 using Erame.Core;
+using Erame.Runtime.Bootstrap;
 using UnityEngine;
 
 namespace Erame.Samples.Minimal{
     /// <summary>
-    /// 最小入口示例：只需继承 ErameEntry，按需重写四个虚方法即可。
-    /// Configure：业务注册（框架默认服务由 ErameRuntime 注册）
-    /// OnStart：启动完成；OnUpdate：主循环；OnQuit：退出清理。
+    /// 最小入口示例：继承 ErameMonoEntry，挂到场景即可启动。
+    /// 业务只需重写 Configure；OnStart / OnUpdate / OnQuit 可选。
     /// </summary>
-    public sealed class MinimalEntry : ErameEntry{
+    public sealed class MinimalEntry : ErameMonoEntry{
+        public override void Configure(ErameBuilder builder){
+            // builder.RegisterSingleton<IMyService>(p => new MyService());
+            // builder.AddModule<MyModule>();
+        }
+
         public override void OnStart(){
-            Debug.Log("[Minimal] 入口启动完成，可以开始编写游戏逻辑了。");
+            Debug.Log("[Minimal] 入口启动成功，可以开始写游戏逻辑了。");
         }
     }
 }

@@ -2,124 +2,70 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 
 namespace Erame.Editor{
     /// <summary>
-    /// 最小入口生成器：生成标准入口（GameEntry）+ 入口提供者（GameEntryProvider）+
-    /// 提供者资产 + 挂好 ErameBootstrap 的场景（Game.unity）。
-    /// 默认生成到 Assets/Game；目标已存在时提示覆盖或取消。
+    /// 一键生成最小项目示例：一个 GameEntry（继承 ErameMonoEntry）+ 一个空场景（已挂好组件）。
+    /// 全程只写文件与 meta，不使用反射。
     /// </summary>
     public static class ErameEntryGenerator{
         private const string GameRoot = "Assets/Game";
-        private const string BootstrapScriptPath =
-            "Packages/com.erame.framework/Runtime/Erame.Runtime/Bootstrap/ErameBootstrap.cs";
-
         private const string EntryFileName = "GameEntry.cs";
-        private const string ProviderFileName = "GameEntryProvider.cs";
-        private const string AssetFileName = "GameEntryProvider.asset";
         private const string SceneFileName = "Game.unity";
 
-        // 场景对象 fileID（避开模板中的 1~4 / 70550799x / 96319422x）
-        private const long BootstrapGoId = 1948573001;
-        private const long BootstrapTransformId = 1948573002;
-        private const long BootstrapComponentId = 1948573003;
+        // 场景对象 fileID（避开场景默认的 1~4）
+        private const long EntryGoId = 1948573001;
+        private const long EntryTransformId = 1948573002;
+        private const long EntryComponentId = 1948573003;
 
         private const string EntryTemplate =
 @"using Erame.Core;
-
-namespace __NS__{
-    /// <summary>
-    /// 标准入口：整个项目只需重写这里即可启动。
-    /// Configure 负责业务注册（框架默认服务已由 ErameRuntime 注册），
-    /// OnStart / OnUpdate / OnQuit 负责生命周期收尾。
-    /// </summary>
-    public sealed class GameEntry : ErameEntry{
-        public override void Configure(ServiceContainer container){
-            // 业务自定义服务在此注册：
-            // container.RegisterSingleton<IMyService>(p => new MyService(...));
-        }
-
-        public override void OnStart(){
-            // 启动完成后的业务初始化：
-        }
-    }
-}
-";
-
-        private const string ProviderTemplate =
-@"using Erame.Core;
 using Erame.Runtime.Bootstrap;
-using Erame.Runtime.Config;
-using UnityEngine;
 
 namespace __NS__{
     /// <summary>
-    /// 入口提供者资产：持有配置并创建 GameEntry。
-    /// 场景中的 ErameBootstrap 引用本资产来启动整个项目（不使用反射）。
+    /// 项目入口：把本组件挂到场景对象上即可启动整个项目。
+    /// 业务只需在 Configure 里注册服务/模块，可选重写 OnStart / OnUpdate / OnQuit。
     /// </summary>
-    [CreateAssetMenu(fileName = ""GameEntryProvider"", menuName = ""Erame/Entry Provider"")]
-    public sealed class GameEntryProvider : ErameEntryProvider{
-        [Tooltip(""可留空，留空时使用框架默认配置"")]
-        [SerializeField] private ErameSettings settings;
-
-        public override ErameEntry Create() => new GameEntry();
-
+    public sealed class GameEntry : ErameMonoEntry{
         public override void Configure(ErameBuilder builder){
-            builder.WithSettings(settings);
+            // builder.RegisterSingleton<IMyService>(p => new MyService());
+            // builder.AddModule<MyModule>();
         }
     }
 }
 ";
 
-        [MenuItem("Erame/生成最小入口", priority = 14)]
+        [MenuItem("Erame/示例/生成项目示例", priority = 11)]
         public static void Generate(){
-            // 1. 已存在 → 提示覆盖 / 取消
-            if (Directory.Exists(GameRoot)){
-                var existing = CollectExistingOutputs();
-                if (existing.Count > 0){
-                    var confirmed = EditorUtility.DisplayDialog(
-                        "Erame 生成最小入口",
-                        "目标已存在，以下文件将被覆盖：\n\n" + string.Join("\n", existing) +
-                        "\n\n其他文件不受影响。是否覆盖？",
-                        "覆盖",
-                        "取消");
-                    if (!confirmed) return;
-                }
-            }
-
-            // 2. 目录架构
-            EnsureFolder(GameRoot);
-            EnsureFolder(GameRoot + "/Scripts");
-            EnsureFolder(GameRoot + "/Scripts/App");
-            EnsureFolder(GameRoot + "/Scenes");
-
-            var rootName = Path.GetFileName(GameRoot);
-            var ns = ToNamespace(rootName) + ".Scripts.App";
-
-            var entryPath = GameRoot + "/Scripts/App/" + EntryFileName;
-            var providerPath = GameRoot + "/Scripts/App/" + ProviderFileName;
-            var assetPath = GameRoot + "/" + AssetFileName;
+            var entryPath = GameRoot + "/" + EntryFileName;
             var scenePath = GameRoot + "/Scenes/" + SceneFileName;
 
-            // 3. 写脚本（连同自造的 meta，保证 GUID 确定，便于资产/场景引用）
-            var providerGuid = WriteTextWithMeta(providerPath, ProviderTemplate.Replace("__NS__", ns), NewGuid());
-            WriteTextWithMeta(entryPath, EntryTemplate.Replace("__NS__", ns), NewGuid());
+            var existing = new List<string>();
+            if (File.Exists(entryPath)) existing.Add(entryPath);
+            if (File.Exists(scenePath)) existing.Add(scenePath);
 
-            // 4. 提供者资产
-            var assetGuid = NewGuid();
-            WriteTextWithMeta(assetPath, BuildAssetYaml(providerGuid, Path.GetFileNameWithoutExtension(AssetFileName)), assetGuid);
-
-            // 5. 场景（内嵌 ErameBootstrap + Provider 引用）
-            var bootstrapGuid = ReadPackageGuid(BootstrapScriptPath);
-            if (string.IsNullOrEmpty(bootstrapGuid)){
-                Debug.LogError("[Erame] 无法读取 ErameBootstrap 脚本 GUID，生成中止。");
-                return;
+            if (existing.Count > 0){
+                var confirmed = EditorUtility.DisplayDialog(
+                    "Erame 生成项目示例",
+                    "目标已存在，以下文件将被覆盖：\n\n" + string.Join("\n", existing) +
+                    "\n\n其他文件不受影响。是否覆盖？",
+                    "覆盖",
+                    "取消");
+                if (!confirmed) return;
             }
 
-            WriteTextWithMeta(scenePath, BuildSceneYaml(bootstrapGuid, assetGuid), NewGuid());
+            EnsureFolder(GameRoot);
+            EnsureFolder(GameRoot + "/Scenes");
+
+            var ns = ToNamespace(Path.GetFileName(GameRoot));
+            var entryGuid = WriteTextWithMeta(entryPath, EntryTemplate.Replace("__NS__", ns));
+
+            if (!File.Exists(scenePath + ".meta") || File.Exists(scenePath)){
+                WriteTextWithMeta(scenePath, BuildSceneYaml(entryGuid));
+            }
 
             AssetDatabase.Refresh();
 
@@ -130,26 +76,9 @@ namespace __NS__{
             }
 
             Debug.Log(
-                "[Erame] 已生成最小入口：\n" +
+                "[Erame] 已生成项目示例：\n" +
                 $"  入口: {entryPath}\n" +
-                $"  提供者: {providerPath}\n" +
-                $"  资产: {assetPath}\n" +
-                $"  场景: {scenePath}（ErameBootstrap 已挂载并引用提供者资产）");
-        }
-
-        private static List<string> CollectExistingOutputs(){
-            var list = new List<string>();
-            string[] paths = {
-                GameRoot + "/Scripts/App/" + EntryFileName,
-                GameRoot + "/Scripts/App/" + ProviderFileName,
-                GameRoot + "/" + AssetFileName,
-                GameRoot + "/Scenes/" + SceneFileName
-            };
-            foreach (var path in paths){
-                if (File.Exists(path)) list.Add(path);
-            }
-
-            return list;
+                $"  场景: {scenePath}（已挂载 GameEntry 组件）");
         }
 
         private static void EnsureFolder(string path){
@@ -163,64 +92,32 @@ namespace __NS__{
             AssetDatabase.CreateFolder(parent, name);
         }
 
-        private static string WriteTextWithMeta(string assetPath, string content, string guid){
+        private static string WriteTextWithMeta(string assetPath, string content){
+            var guid = Guid.NewGuid().ToString("N");
             File.WriteAllText(assetPath, content, new UTF8Encoding(false));
 
-            var metaPath = assetPath + ".meta";
-            var importer = GetImporterBlock(assetPath);
-            File.WriteAllText(metaPath,
+            var importer = assetPath.EndsWith(".cs")
+                ? "MonoImporter:\n" +
+                  "  externalObjects: {}\n" +
+                  "  serializedVersion: 2\n" +
+                  "  defaultReferences: []\n" +
+                  "  executionOrder: 0\n" +
+                  "  icon: {instanceID: 0}\n" +
+                  "  userData: \n" +
+                  "  assetBundleName: \n" +
+                  "  assetBundleVariant: \n"
+                : "DefaultImporter:\n" +
+                  "  externalObjects: {}\n" +
+                  "  userData: \n" +
+                  "  assetBundleName: \n" +
+                  "  assetBundleVariant: \n";
+
+            File.WriteAllText(assetPath + ".meta",
                 $"fileFormatVersion: 2\nguid: {guid}\n{importer}", new UTF8Encoding(false));
             return guid;
         }
 
-        private static string GetImporterBlock(string assetPath){
-            if (assetPath.EndsWith(".cs")){
-                return "MonoImporter:\n" +
-                       "  externalObjects: {}\n" +
-                       "  serializedVersion: 2\n" +
-                       "  defaultReferences: []\n" +
-                       "  executionOrder: 0\n" +
-                       "  icon: {instanceID: 0}\n" +
-                       "  userData: \n" +
-                       "  assetBundleName: \n" +
-                       "  assetBundleVariant: \n";
-            }
-
-            if (assetPath.EndsWith(".asset")){
-                return "NativeFormatImporter:\n" +
-                       "  externalObjects: {}\n" +
-                       "  mainObjectFileID: 11400000\n" +
-                       "  userData: \n" +
-                       "  assetBundleName: \n" +
-                       "  assetBundleVariant: \n";
-            }
-
-            return "DefaultImporter:\n" +
-                   "  externalObjects: {}\n" +
-                   "  userData: \n" +
-                   "  assetBundleName: \n" +
-                   "  assetBundleVariant: \n";
-        }
-
-        private static string BuildAssetYaml(string providerScriptGuid, string assetName){
-            return "%YAML 1.1\n" +
-                   "%TAG !u! tag:unity3d.com,2011:\n" +
-                   "--- !u!114 &11400000\n" +
-                   "MonoBehaviour:\n" +
-                   "  m_ObjectHideFlags: 0\n" +
-                   "  m_CorrespondingSourceObject: {fileID: 0}\n" +
-                   "  m_PrefabInstance: {fileID: 0}\n" +
-                   "  m_PrefabAsset: {fileID: 0}\n" +
-                   "  m_GameObject: {fileID: 0}\n" +
-                   "  m_Enabled: 1\n" +
-                   "  m_EditorHideFlags: 0\n" +
-                   $"  m_Script: {{fileID: 11500000, guid: {providerScriptGuid}, type: 3}}\n" +
-                   $"  m_Name: {assetName}\n" +
-                   "  m_EditorClassIdentifier: \n" +
-                   "  settings: {fileID: 0}\n";
-        }
-
-        private static string BuildSceneYaml(string bootstrapScriptGuid, string providerAssetGuid){
+        private static string BuildSceneYaml(string entryScriptGuid){
             var sb = new StringBuilder(4096);
             sb.Append(
                 "%YAML 1.1\n" +
@@ -347,8 +244,7 @@ namespace __NS__{
                 "      m_Flags: 0\n" +
                 "  m_NavMeshData: {fileID: 0}\n");
 
-            // ErameBootstrap 启动对象
-            sb.Append($"--- !u!1 &{BootstrapGoId}\n" +
+            sb.Append($"--- !u!1 &{EntryGoId}\n" +
                       "GameObject:\n" +
                       "  m_ObjectHideFlags: 0\n" +
                       "  m_CorrespondingSourceObject: {fileID: 0}\n" +
@@ -356,23 +252,23 @@ namespace __NS__{
                       "  m_PrefabAsset: {fileID: 0}\n" +
                       "  serializedVersion: 6\n" +
                       "  m_Component:\n" +
-                      $"  - component: {{fileID: {BootstrapTransformId}}}\n" +
-                      $"  - component: {{fileID: {BootstrapComponentId}}}\n" +
+                      $"  - component: {{fileID: {EntryTransformId}}}\n" +
+                      $"  - component: {{fileID: {EntryComponentId}}}\n" +
                       "  m_Layer: 0\n" +
-                      "  m_Name: ErameBootstrap\n" +
+                      "  m_Name: GameEntry\n" +
                       "  m_TagString: Untagged\n" +
                       "  m_Icon: {fileID: 0}\n" +
                       "  m_NavMeshLayer: 0\n" +
                       "  m_StaticEditorFlags: 0\n" +
                       "  m_IsActive: 1\n");
 
-            sb.Append($"--- !u!4 &{BootstrapTransformId}\n" +
+            sb.Append($"--- !u!4 &{EntryTransformId}\n" +
                       "Transform:\n" +
                       "  m_ObjectHideFlags: 0\n" +
                       "  m_CorrespondingSourceObject: {fileID: 0}\n" +
                       "  m_PrefabInstance: {fileID: 0}\n" +
                       "  m_PrefabAsset: {fileID: 0}\n" +
-                      $"  m_GameObject: {{fileID: {BootstrapGoId}}}\n" +
+                      $"  m_GameObject: {{fileID: {EntryGoId}}}\n" +
                       "  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}\n" +
                       "  m_LocalPosition: {x: 0, y: 0, z: 0}\n" +
                       "  m_LocalScale: {x: 1, y: 1, z: 1}\n" +
@@ -381,37 +277,30 @@ namespace __NS__{
                       "  m_RootOrder: 0\n" +
                       "  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}\n");
 
-            sb.Append($"--- !u!114 &{BootstrapComponentId}\n" +
+            sb.Append($"--- !u!114 &{EntryComponentId}\n" +
                       "MonoBehaviour:\n" +
                       "  m_ObjectHideFlags: 0\n" +
                       "  m_CorrespondingSourceObject: {fileID: 0}\n" +
                       "  m_PrefabInstance: {fileID: 0}\n" +
                       "  m_PrefabAsset: {fileID: 0}\n" +
-                      $"  m_GameObject: {{fileID: {BootstrapGoId}}}\n" +
+                      $"  m_GameObject: {{fileID: {EntryGoId}}}\n" +
                       "  m_Enabled: 1\n" +
                       "  m_EditorHideFlags: 0\n" +
-                      $"  m_Script: {{fileID: 11500000, guid: {bootstrapScriptGuid}, type: 3}}\n" +
+                      $"  m_Script: {{fileID: 11500000, guid: {entryScriptGuid}, type: 3}}\n" +
                       "  m_Name: \n" +
-                      "  m_EditorClassIdentifier: \n" +
-                      $"  provider: {{fileID: 11500000, guid: {providerAssetGuid}, type: 2}}\n" +
-                      "  dontDestroyOnLoad: 1\n");
+                      "  m_EditorClassIdentifier: \n");
+
+            sb.Append("--- !u!1660057539 &9223372036854775807\n" +
+                      "SceneRoots:\n" +
+                      "  m_ObjectHideFlags: 0\n" +
+                      "  m_Roots:\n" +
+                      $"  - {{fileID: {EntryTransformId}}}\n");
 
             return sb.ToString();
         }
 
-        private static string ReadPackageGuid(string packageFilePath){
-            var fullPath = Path.GetFullPath(packageFilePath);
-            if (!File.Exists(fullPath)) return null;
-
-            var meta = File.ReadAllText(fullPath + ".meta");
-            var match = Regex.Match(meta, @"guid:\s*([0-9a-f]{32})");
-            return match.Success ? match.Groups[1].Value : null;
-        }
-
-        private static string NewGuid() => Guid.NewGuid().ToString("N");
-
         private static string ToNamespace(string folderName){
-            var clean = Regex.Replace(folderName, "[^A-Za-z0-9_]", "");
+            var clean = new string(Array.FindAll(folderName.ToCharArray(), c => char.IsLetterOrDigit(c) || c == '_'));
             if (string.IsNullOrEmpty(clean)) return "MyGame";
             if (char.IsDigit(clean[0])) clean = "_" + clean;
             return clean;

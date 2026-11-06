@@ -1,6 +1,6 @@
 {
   "name": "com.erame.platform.steam",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "displayName": "Erame Platform - Steam",
   "description": "Erame 框架的 Steam 平台实现（可选包）。未安装 Steamworks.NET 时该程序集不会参与编译。",
   "unity": "2022.3",
@@ -13,7 +13,7 @@
     "name": "Erame"
   },
   "dependencies": {
-    "com.erame.framework": "0.4.0",
+    "com.erame.framework": "0.5.0",
     "com.rlabrecque.steamworks.net": "https://github.com/rlabrecque/Steamworks.NET.git?path=/com.rlabrecque.steamworks.net"
   }
 }

@@ -61,16 +61,16 @@ namespace Erame.Editor{
             else Debug.Log(prefix + "\n" + string.Join("\n", lines));
         }
 
-        [MenuItem("Erame/诊断/服务容器快照", priority = 21)]
+        [MenuItem("Erame/测试/容器快照", priority = 21)]
         public static void DumpContainer(){
             if (!EditorApplication.isPlaying){
-                Debug.LogWarning("[Erame] 服务容器快照需要进入 Play 模式后使用。");
+                Debug.LogWarning("[Erame] 容器快照需要进入 Play 模式后使用。");
                 return;
             }
 
-            var container = ErameEditorUtility.FindActiveContainer();
+            var container = ErameEditorUtility.GetRuntimeServices();
             if (container == null){
-                Debug.LogWarning("[Erame] 未找到运行中的 ServiceContainer，请确认已通过 ErameBootstrap 完成启动（ErameRuntime.Start）。");
+                Debug.LogWarning("[Erame] 未找到运行中的服务容器，请确认场景中已挂载 ErameMonoEntry 入口。");
                 return;
             }
 
@@ -86,16 +86,16 @@ namespace Erame.Editor{
             Debug.Log("[Erame] 服务容器快照\n" + string.Join("\n", lines));
         }
 
-        [MenuItem("Erame/诊断/事件订阅统计", priority = 22)]
+        [MenuItem("Erame/测试/事件统计", priority = 22)]
         public static void DumpSubscriptions(){
             if (!EditorApplication.isPlaying){
-                Debug.LogWarning("[Erame] 事件订阅统计需要进入 Play 模式后使用。");
+                Debug.LogWarning("[Erame] 事件统计需要进入 Play 模式后使用。");
                 return;
             }
 
-            var container = ErameEditorUtility.FindActiveContainer();
+            var container = ErameEditorUtility.GetRuntimeServices();
             if (container == null){
-                Debug.LogWarning("[Erame] 未找到运行中的 ServiceContainer，请确认已通过 ErameBootstrap 完成启动（ErameRuntime.Start）。");
+                Debug.LogWarning("[Erame] 未找到运行中的服务容器，请确认场景中已挂载 ErameMonoEntry 入口。");
                 return;
             }
 

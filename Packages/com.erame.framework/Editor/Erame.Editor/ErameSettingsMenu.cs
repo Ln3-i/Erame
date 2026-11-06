@@ -7,7 +7,7 @@ using UnityEngine;
 namespace Erame.Editor{
     /// <summary>ErameSettings 的创建、校验与维护。</summary>
     public static class ErameSettingsMenu{
-        [MenuItem("Erame/配置/创建框架设置", priority = 10)]
+        [MenuItem("Erame/示例/生成框架设置", priority = 10)]
         public static void CreateSettings(){
             var instance = ScriptableObject.CreateInstance<ErameSettings>();
             var path = AssetDatabase.GenerateUniqueAssetPath(GetTargetFolder() + "/ErameSettings.asset");

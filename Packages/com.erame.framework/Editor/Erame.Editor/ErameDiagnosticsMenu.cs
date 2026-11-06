@@ -70,7 +70,7 @@ namespace Erame.Editor{
 
             var container = ErameEditorUtility.FindActiveContainer();
             if (container == null){
-                Debug.LogWarning("[Erame] 未找到运行中的 ServiceContainer，请确认已调用 GameApp.Start()。");
+                Debug.LogWarning("[Erame] 未找到运行中的 ServiceContainer，请确认已通过 ErameBootstrap 完成启动（ErameRuntime.Start）。");
                 return;
             }
 
@@ -95,7 +95,7 @@ namespace Erame.Editor{
 
             var container = ErameEditorUtility.FindActiveContainer();
             if (container == null){
-                Debug.LogWarning("[Erame] 未找到运行中的 ServiceContainer，请确认已调用 GameApp.Start()。");
+                Debug.LogWarning("[Erame] 未找到运行中的 ServiceContainer，请确认已通过 ErameBootstrap 完成启动（ErameRuntime.Start）。");
                 return;
             }
 

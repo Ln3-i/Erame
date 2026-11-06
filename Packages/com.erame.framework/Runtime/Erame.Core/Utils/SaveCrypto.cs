@@ -9,7 +9,7 @@ namespace Erame.Core.Utils{
         private static ISaveCrypto _impl;
 
         /// <summary>
-        /// 由业务层（GameApp）在启动时注入密钥，内部创建 AES-GCM 实现。
+        /// 由框架（ErameInstaller）在启动时注入密钥，内部创建 AES-GCM 实现。
         /// 密钥必须是 16, 24, 或 32 字节。
         /// </summary>
         [Obsolete("请改用注入的 ISaveCrypto 实现，本方法仅用于兼容旧代码。")]

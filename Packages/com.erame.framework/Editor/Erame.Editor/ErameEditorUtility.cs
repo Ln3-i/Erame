@@ -57,7 +57,7 @@ namespace Erame.Editor{
 
         /// <summary>
         /// 在当前 AppDomain 中查找公开静态属性返回的 ServiceContainer。
-        /// 这样编辑器工具不需要依赖宿主工程的程序集（例如 GameApp）。
+        /// 这样编辑器工具不需要依赖宿主工程的程序集（例如 ErameRuntime）。
         /// </summary>
         public static ServiceContainer FindActiveContainer(){
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies()){

@@ -9,13 +9,15 @@ Packages/
 ├── com.erame.framework/           ← 必装
 │   ├── Runtime/
 │   │   ├── Erame.Core/            ← Erame.Core：纯 C#，noEngineReferences = true
+│   │   │   ├── Entry/             ErameEntry（入口抽象类，四虚方法）
 │   │   │   ├── Container/         ServiceContainer、IModule、IService
 │   │   │   ├── Event/             EventBus（struct 事件 + 订阅凭证）
 │   │   │   ├── Asset/             IAssetService、IAssetScope、AssetHandle
 │   │   │   ├── Audio/ Input/ UI/ Pool/ Save/ Data/ Debug/ Time/ Scene/ Session/ Platform/
 │   │   │   └── Algorithms/        AStar、UnionFind、拓扑排序、优先队列
 │   │   ├── Erame.Runtime/         ← Erame.Runtime：Unity 实现层
-│   │   │   ├── Bootstrap/         ErameInstaller（服务装配入口）
+│   │   │   ├── Bootstrap/         ErameRuntime（启动编排）、ErameBootstrap（场景组件）、
+│   │   │   │                      ErameEntryProvider / ErameBuilder / ErameInstaller / ErameAutoStart
 │   │   │   ├── Config/            ErameSettings（存档密钥 / SteamAppId / 日志级别）
 │   │   │   └── Services/          按领域分组：Asset/ Audio/ Data/ Debug/ Flow/
 │   │   │                          Input/ Localization/ Log/ Platform/ Pool/ Save/
@@ -43,7 +45,7 @@ Packages/
 ```json
 {
   "dependencies": {
-    "com.erame.framework": "https://github.com/<your-account>/<your-repo>.git?path=/Packages/com.erame.framework#v0.3.0"
+    "com.erame.framework": "https://github.com/<your-account>/<your-repo>.git?path=/Packages/com.erame.framework#v0.4.0"
   }
 }
 ```
@@ -51,37 +53,54 @@ Packages/
 需要 Steam 支持时再额外添加：
 
 ```json
-"com.erame.platform.steam": "https://github.com/<your-account>/<your-repo>.git?path=/Packages/com.erame.platform.steam#v0.3.0"
+"com.erame.platform.steam": "https://github.com/<your-account>/<your-repo>.git?path=/Packages/com.erame.platform.steam#v0.4.0"
 ```
 
 也可以把包目录打成 `.tgz` 后通过 `Packages/manifest.json` 的本地路径 / `Add package from tarball` 安装。
 
 ## 快速接入
 
-1. 创建配置资产：`Assets → Create → Erame → 框架设置`，得到 `ErameSettings`。
-2. 填写 `SteamAppId`、日志级别与 32 字节存档密钥（留空会生成开发期密钥，仅适合本地调试）。
-3. 在启动场景的 `GameBootstrap` 上把该资产拖入 `Settings` 字段。
-4. 重写入口类（可直接用 `Erame/快速开始/创建业务层示例` 生成标准模板）：
+最快路径：菜单 **`Erame/生成最小入口`**，一步生成 入口 + 提供者 + 提供者资产 + 挂好 `ErameBootstrap` 的 `Game.unity`（目标已存在时会提示覆盖或取消）。也可从 Package Manager 导入样本 **Minimal Entry（最小入口）**。
+
+分步说明：
+
+1. 创建配置资产（可选）：`Assets → Create → Erame → 框架设置`，填写 `SteamAppId`、日志级别与 32 字节存档密钥（留空会生成开发期密钥，仅适合本地调试）。
+2. 重写入口类（四个虚方法按需重写；框架默认服务由 `ErameRuntime` 注册）：
 
 ```csharp
+using Erame.Core;
+
 public sealed class GameEntry : ErameEntry{
-    protected override void Configure(ServiceContainer container, ErameSettings settings){
-        // 框架默认装配 + 业务自定义服务注册
-        ErameInstaller.InstallFramework(container, settings);
-        ErameInstaller.InstallGameplay(container, settings, _ => new MyInputAdapter());
-        ErameInstaller.InstallPlatform(container, settings);
+    public override void Configure(ServiceContainer container){
+        // 业务自定义服务在此注册：
         // container.RegisterSingleton<IMyService>(p => new MyService(...));
     }
 
-    protected override void OnStarted(){
+    public override void OnStart(){
         // 启动完成后的收尾，例如注册流程状态
     }
 }
 ```
 
-场景中放一个持有入口的 `MonoBehaviour`：`Start()` 调 `_entry.Start(settings)`、`Update()` 调 `_entry.Update()`、`OnDestroy()` 调 `_entry.Quit()` 即可。
+3. 创建入口提供者（`Assets → Create → Erame → Entry Provider`）：`Create()` 负责实例化入口，`Configure(builder)` 负责填充配置、输入源与模块：
 
-也可以沿用 `IModule` 模块分组，把三个模块的实现委托给 `ErameInstaller`（参见仓库中的 `GameModules.cs` 与 `GameEntry.cs`）。
+```csharp
+public sealed class GameEntryProvider : ErameEntryProvider{
+    [SerializeField] private ErameSettings settings;
+
+    public override ErameEntry Create() => new GameEntry();
+
+    public override void Configure(ErameBuilder builder){
+        builder.WithSettings(settings);
+        builder.WithInputSource(_ => new MyInputAdapter());   // 可选
+        builder.AddModule(new MyModule());                    // 可选，模块先收集后 Configure
+    }
+}
+```
+
+4. 场景中创建 GameObject 并添加 `ErameBootstrap` 组件，把提供者资产拖到 **Provider** 字段，进入 Play 即可。
+
+`IModule` 模块仍是可选的服务分组方式；模块由 `ErameBuilder` 先收集、在业务注册之后统一 Configure。
 
 ## 程序集依赖
 
@@ -96,21 +115,22 @@ Erame.Platform.Steam ──► Erame.Core ＋ Steamworks（仅 USE_STEAM 且 STE
 ## 启动流程
 
 ```
-GameBootstrap.Start()
-└── GameEntry : ErameEntry → Start(settings)
-    ├── new ServiceContainer()
-    ├── Configure(container, settings)      ← 开发者重写：模块与服务注册
-    ├── Build() + InitializeAll()            ← 容器按依赖拓扑序初始化，失败自动回滚
-    └── OnStarted()                          ← 开发者重写：启动收尾（如注册流程）
+ErameBootstrap.Start()
+└── provider.Create() → ErameRuntime.Start(entry, builder)      ← 幂等，重复调用无效果
+    ├── 1. 注册默认服务（ErameInstaller：Framework / Gameplay / Platform）
+    ├── 2. 业务注册：entry.Configure(container)                  ← 开发者重写
+    ├── 3. 模块 Configure（builder 先收集、后统一配置）
+    ├── Build() + InitializeAll()                                 ← 容器按依赖拓扑序初始化，失败自动回滚
+    └── 4. entry.OnStart()
 
-GameBootstrap.Update()
-└── ErameEntry.Update() → OnUpdate()
-    ├── GameApp.Flow.Update()
-    ├── GameApp.Tick.Update(deltaTime)       ← ITickService 由主循环驱动
-    └── GameApp.Platform.Update()
+ErameBootstrap.Update()
+└── ErameRuntime.Update() → entry.OnUpdate()
 
-GameBootstrap.OnDestroy()
-└── ErameEntry.Quit() → Container.Dispose()  ← 逆序 Dispose
+ErameBootstrap.OnDestroy()
+└── ErameRuntime.Quit() → entry.OnQuit() → Container.Dispose()   ← 逆序 Dispose
+
+备选：定义 ERAME_AUTO_START 宏 + Resources/ErameEntryProvider.asset
+      → ErameAutoStart 在进入第一帧前自动启动（默认不启用）
 ```
 
 ## 服务一览
@@ -159,7 +179,7 @@ GameBootstrap.OnDestroy()
 | `Erame/配置/校验框架设置` | 检查密钥长度、AppID、日志级别 |
 | `Erame/配置/生成开发期密钥` | 为当前设置重新生成密钥 |
 | `Erame/配置/定位当前设置` | 在 Project/Inspector 中选中当前设置 |
-| `Erame/快速开始/创建业务层示例` | 生成与本仓库一致的业务层目录架构 + 标准入口 `GameEntry` |
+| `Erame/生成最小入口` | 生成入口 + 提供者 + 资产 + 挂好 ErameBootstrap 的 Game.unity（已存在可覆盖） |
 | `Erame/诊断/框架自检` | 检查 Addressables、Input System、TMP、Steamworks、存档目录与包版本 |
 | `Erame/诊断/服务容器快照` | Play 模式下导出服务注册与初始化顺序 |
 | `Erame/诊断/事件订阅统计` | 列出各事件类型的订阅者数量 |

@@ -1,6 +1,6 @@
 {
   "name": "com.erame.framework",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "displayName": "Erame Framework",
   "description": "轻量游戏框架：纯 C# 核心（Erame.Core）+ Unity 实现（Erame.Runtime）。",
   "unity": "2022.3",
@@ -15,5 +15,12 @@
   },
   "dependencies": {
     "com.unity.addressables": "1.22.3"
-  }
+  },
+  "samples": [
+    {
+      "displayName": "Minimal Entry（最小入口）",
+      "description": "最小入口示例：Entry + Provider + 启动说明。",
+      "path": "Samples~/Minimal"
+    }
+  ]
 }

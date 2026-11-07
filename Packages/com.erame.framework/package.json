@@ -1,8 +1,8 @@
 {
   "name": "com.erame.framework",
-  "version": "0.5.0",
+  "version": "0.10.0",
   "displayName": "Erame Framework",
-  "description": "轻量游戏框架：纯 C# 核心（Erame.Core）+ Unity 实现（Erame.Runtime）。",
+  "description": "轻量游戏框架：纯 C# 底座（Erame.Core）+ 启动壳（Erame.Runtime）+ 业务侧契约/实现（Game.Runtime）。平台能力由开发者自行实现。",
   "unity": "2022.3",
   "keywords": [
     "framework",
@@ -12,9 +12,6 @@
   ],
   "author": {
     "name": "Erame"
-  },
-  "dependencies": {
-    "com.unity.addressables": "1.22.3"
   },
   "samples": [
     {

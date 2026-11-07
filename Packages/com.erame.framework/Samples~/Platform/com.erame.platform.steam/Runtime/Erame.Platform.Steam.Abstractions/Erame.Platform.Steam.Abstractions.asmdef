@@ -1,0 +1,17 @@
+{
+    "name": "Erame.Platform.Steam.Abstractions",
+    "rootNamespace": "Erame.Platform.Steam",
+    "references": [
+        "Erame.Core",
+        "Erame.Platform.Abstractions"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

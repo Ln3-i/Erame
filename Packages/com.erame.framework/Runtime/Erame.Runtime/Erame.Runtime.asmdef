@@ -2,9 +2,7 @@
     "name": "Erame.Runtime",
     "rootNamespace": "Erame.Runtime",
     "references": [
-        "Erame.Core",
-        "Unity.Addressables",
-        "Unity.ResourceManager"
+        "Erame.Core"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -13,12 +11,6 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": [
-        {
-            "name": "com.rlabrecque.steamworks.net",
-            "expression": "",
-            "define": "STEAMWORKS_AVAILABLE"
-        }
-    ],
+    "versionDefines": [],
     "noEngineReferences": false
 }

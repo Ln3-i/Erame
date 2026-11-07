@@ -1,0 +1,26 @@
+{
+    "name": "Erame.Platform.Steam.Tests",
+    "rootNamespace": "Erame.Platform.Steam.Tests",
+    "references": [
+        "Erame.Core",
+        "Erame.Platform.Abstractions",
+        "GUID:2cdeb7a243648ae45b5a7c6625e3d05b",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

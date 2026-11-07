@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Erame.Core;
+using Erame.Runtime.Bootstrap;
 using Erame.Runtime.Config;
 using UnityEditor;
 using UnityEngine;
@@ -20,17 +21,11 @@ namespace Erame.Editor{
             AddPackageLine(lines, "Addressables", "com.unity.addressables", true, ref failed);
             AddPackageLine(lines, "Input System", "com.unity.inputsystem", true, ref failed);
             AddPackageLine(lines, "TextMeshPro", "com.unity.textmeshpro", false, ref failed);
-            AddPackageLine(lines, "Steamworks", ErameEditorUtility.SteamworksPackageName, false, ref failed);
 
             var frameworkVersion = ErameEditorUtility.GetPackageVersion(ErameEditorUtility.FrameworkPackageName);
             lines.Add(frameworkVersion != null
                 ? $"[OK] 框架包: {frameworkVersion}"
                 : "[FAIL] 未检测到 com.erame.framework");
-
-            var steamPackage = ErameEditorUtility.GetPackageVersion(ErameEditorUtility.SteamPackageName);
-            lines.Add(steamPackage != null
-                ? $"[OK] Steam 平台包: {steamPackage}"
-                : "[提示] 未安装 com.erame.platform.steam（可选）");
 
             if (File.Exists("Assets/AddressableAssetsData/AddressableAssetSettings.asset"))
                 lines.Add("[OK] Addressables 配置文件存在");
@@ -51,10 +46,21 @@ namespace Erame.Editor{
                     : "[警告] 存档密钥未配置或长度非法");
             }
 
-            lines.Add(CheckSaveDirectory());
+            // 运行时读的是入口引用的设置资产，不是工程里"存在"的资产：
+            // 入口没引用时，上面校验的密钥/日志级别都不会真正生效
+            // （本文件同时 using System 与 UnityEngine，Object 必须全限定避免 CS0104）
+            var entry = UnityEngine.Object.FindObjectOfType<ErameMonoEntry>();
+            if (entry == null){
+                lines.Add("[提示] 当前场景未挂载 ErameMonoEntry 入口");
+            }
+            else if (entry.Settings == null){
+                lines.Add("[警告] 入口未引用 ErameSettings 资产：运行时配置（密钥/日志级别）不会生效");
+            }
+            else{
+                lines.Add($"[OK] 入口已引用设置资产: {entry.Settings.name}");
+            }
 
-            var hasSteamDefine = ErameEditorUtility.HasDefineSymbol("USE_STEAM");
-            lines.Add(hasSteamDefine ? "[OK] USE_STEAM 已开启" : "[提示] 当前为原生平台模式");
+            lines.Add(CheckSaveDirectory());
 
             var prefix = failed ? "[Erame] 框架自检发现问题" : "[Erame] 框架自检完成";
             if (failed) Debug.LogError(prefix + "\n" + string.Join("\n", lines));
@@ -78,10 +84,15 @@ namespace Erame.Editor{
             lines.Add($"状态: Built={container.IsBuilt}, Disposed={container.IsDisposed}");
 
             var registered = container.GetRegisteredServiceTypes();
-            lines.Add($"注册服务 ({registered.Count}): " + string.Join(", ", registered.Select(t => t.Name)));
+            lines.Add($"注册服务 ({registered.Count})：");
+            foreach (var type in registered){
+                var source = container.GetRegistrationSource(type) ?? "未标记";
+                lines.Add($"  {type.Name} ← {source}");
+            }
 
             var creationOrder = container.GetCreationOrder();
             lines.Add($"初始化顺序 ({creationOrder.Count}): " + string.Join(" -> ", creationOrder.Select(t => t.Name)));
+            lines.Add("提示：同一实例以「具体类型 + 接口视图」注册时会各占一行（如 FileSaveService / ISaveService / ISaveSlotService），初始化与释放按实例去重，只执行一次。");
 
             Debug.Log("[Erame] 服务容器快照\n" + string.Join("\n", lines));
         }
@@ -99,17 +110,33 @@ namespace Erame.Editor{
                 return;
             }
 
-            if (!container.TryGet<IEventBus>(out var bus)){
-                Debug.LogWarning("[Erame] 容器中没有注册 IEventBus。");
+            // 底座不提供事件契约：这里用反射找「恰好提供 GetSubscriptionCounts()」的服务，
+            // 因此业务用哪种事件总线（或者干脆没有事件总线）都能工作。
+            var counts = new List<KeyValuePair<Type, int>>();
+            var found = false;
+            foreach (var service in container.GetAll<object>()){
+                if (service == null) continue;
+
+                var method = service.GetType().GetMethod("GetSubscriptionCounts", Type.EmptyTypes);
+                if (method == null || method.GetParameters().Length != 0) continue;
+
+                try{
+                    if (method.Invoke(service, null) is IReadOnlyList<KeyValuePair<Type, int>> typed){
+                        counts.AddRange(typed);
+                        found = true;
+                        break; // 同时存在多个实现时只看第一个
+                    }
+                }
+                catch (Exception ex){
+                    Debug.LogWarning($"[Erame] 读取事件统计失败（{service.GetType().Name}）: {ex.Message}");
+                }
+            }
+
+            if (!found){
+                Debug.LogWarning("[Erame] 容器中没有支持诊断的事件总线（找不到 GetSubscriptionCounts）。");
                 return;
             }
 
-            if (bus is not EventBus concrete){
-                Debug.LogWarning("[Erame] 当前 IEventBus 实现不支持订阅统计。");
-                return;
-            }
-
-            var counts = concrete.GetSubscriptionCounts();
             if (counts.Count == 0){
                 Debug.Log("[Erame] 当前没有任何事件订阅。");
                 return;

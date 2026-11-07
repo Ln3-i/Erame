@@ -1,0 +1,18 @@
+{
+  "name": "com.erame.platform.wegame",
+  "version": "0.5.0",
+  "displayName": "Erame Platform - Wegame",
+  "description": "Erame 框架的 WeGame 平台适配（当前为占位实现，未接入 SDK）。",
+  "unity": "2022.3",
+  "keywords": [
+    "wegame",
+    "tencent",
+    "platform"
+  ],
+  "author": {
+    "name": "Erame"
+  },
+  "dependencies": {
+    "com.erame.framework": "0.5.0"
+  }
+}

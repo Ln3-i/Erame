@@ -40,7 +40,6 @@ namespace Erame.Editor{
             var failed = false;
 
             lines.Add("资产: " + AssetDatabase.GetAssetPath(settings));
-            lines.Add("Steam AppID: " + settings.SteamAppId);
             lines.Add("日志级别: " + settings.LogLevel);
             lines.Add("存档密钥: " + (settings.HasConfiguredSaveKey
                 ? settings.ConfiguredSaveKeyByteCount + " 字节"
@@ -55,10 +54,6 @@ namespace Erame.Editor{
             }
             else{
                 lines.Add("[提示] 发布前请填写固定密钥，避免换机后旧存档无法解密");
-            }
-
-            if (settings.IsDevSteamAppId){
-                lines.Add("[警告] 仍在使用 Steam 演示 AppID 480");
             }
 
             if (settings.LogLevel == Erame.Core.LogLevel.Debug){

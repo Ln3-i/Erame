@@ -10,14 +10,9 @@ namespace Erame.Runtime.Config{
     /// </summary>
     [CreateAssetMenu(fileName = "ErameSettings", menuName = "Erame/框架设置", order = 0)]
     public sealed class ErameSettings : ScriptableObject{
-        public const int DevSteamAppId = 480;
         public const int DefaultKeyLength = 32;
 
         private const string DevSaveKeyPrefKey = "Erame.DevSaveKey";
-
-        [Header("平台")]
-        [Tooltip("Steam 应用 ID。发布前务必替换为你在 Steamworks 后台创建的真实 AppID。")]
-        [SerializeField] private uint steamAppId = DevSteamAppId;
 
         [Header("日志")]
         [SerializeField] private LogLevel logLevel = LogLevel.Info;
@@ -26,7 +21,6 @@ namespace Erame.Runtime.Config{
         [Tooltip("AES-GCM 存档密钥，UTF-8 字节数必须是 16/24/32。留空时会在开发期自动生成并保存在 PlayerPrefs。")]
         [SerializeField] private string saveKey = string.Empty;
 
-        public uint SteamAppId => steamAppId;
         public LogLevel LogLevel => logLevel;
 
         /// <summary>是否已在资产中填写存档密钥（未填写时会使用 PlayerPrefs 中的开发期密钥）。</summary>
@@ -34,9 +28,6 @@ namespace Erame.Runtime.Config{
 
         /// <summary>已配置密钥的 UTF-8 字节数，未配置时为 0。</summary>
         public int ConfiguredSaveKeyByteCount => HasConfiguredSaveKey ? Encoding.UTF8.GetByteCount(saveKey) : 0;
-
-        /// <summary>是否仍在使用 Steam 的演示 AppID（480）。</summary>
-        public bool IsDevSteamAppId => steamAppId == DevSteamAppId;
 
         /// <summary>未在场景中指定时使用的运行时默认配置（不落盘，仅当前会话有效）。</summary>
         public static ErameSettings Default{
@@ -51,6 +42,15 @@ namespace Erame.Runtime.Config{
         }
 
         private static ErameSettings _default;
+
+        /// <summary>
+        /// 用入口场景引用的设置资产覆盖运行时默认配置（<see cref="Erame.Runtime.Bootstrap.ErameMonoEntry"/> 启动前调用）。
+        /// 不调用时 <see cref="Default"/> 始终是运行时创建的空实例，资产中的密钥/AppID/日志级别不会生效。
+        /// 传 null 表示恢复运行时默认实例（下次访问时重建）。
+        /// </summary>
+        public static void OverrideDefault(ErameSettings settings){
+            _default = settings;
+        }
 
         /// <summary>
         /// 获取存档密钥。优先使用资产中配置的密钥；未配置或长度非法时降级到开发期密钥，

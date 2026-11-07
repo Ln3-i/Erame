@@ -5,7 +5,7 @@ namespace Erame.Core{
     /// 生命周期由 ErameRuntime 依序驱动：Configure → OnStart → OnUpdate（每帧）→ OnQuit。
     /// </summary>
     public interface IErameEntry{
-        /// <summary>业务注册：框架默认服务已注册完毕，可在此注册业务自定义服务与模块。</summary>
+        /// <summary>业务注册：在此注册业务自定义服务与模块；默认服务由模块在后续 Configure 阶段注册。</summary>
         void Configure(ErameBuilder builder);
 
         /// <summary>启动完成：容器 Build + InitializeAll 之后调用。</summary>

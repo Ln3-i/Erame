@@ -1,0 +1,20 @@
+{
+    "name": "Erame.Platform.Epic",
+    "rootNamespace": "Erame.Platform.Epic",
+    "references": [
+        "Erame.Core",
+        "Erame.Runtime",
+        "Erame.Platform.Abstractions"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "USE_EPIC"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

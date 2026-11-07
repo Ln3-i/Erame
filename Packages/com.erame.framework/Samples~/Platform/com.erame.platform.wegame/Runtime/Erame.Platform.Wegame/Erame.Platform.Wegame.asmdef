@@ -1,0 +1,20 @@
+{
+    "name": "Erame.Platform.Wegame",
+    "rootNamespace": "Erame.Platform.Wegame",
+    "references": [
+        "Erame.Core",
+        "Erame.Runtime",
+        "Erame.Platform.Abstractions"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "USE_WEGAME"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

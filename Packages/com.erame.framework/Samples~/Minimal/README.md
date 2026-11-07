@@ -4,17 +4,19 @@
 
 ## 文件
 
-- `MinimalEntry.cs` — 入口类：继承 `ErameMonoEntry`，重写 `Configure`
-- `Minimal.unity` — 已挂好 `MinimalEntry` 组件的示例场景
+- `GameEntry.cs` — 入口类：继承 `ErameMonoEntry`，重写 `Configure`
+- `Game.unity` — 已挂好 `GameEntry` 组件的示例场景
 
 ## 使用
 
 1. 在 Package Manager 中导入本样本。
-2. 打开导入后的 `Minimal.unity`。
-3. 进入 Play，Console 出现 `[Minimal] 入口启动成功` 即完成。
+2. 打开导入后的 `Game.unity`。
+3. 进入 Play，Console 出现 `[Game] 入口启动成功` 即完成。
 
 ## 说明
 
-- 启动链路：`MinimalEntry.Awake → ErameRuntime.Start(this)`，全程静态调用、无反射。
-- 框架默认注册日志、事件、时间三个服务；其余服务在 `Configure` 里自行注册或通过 `builder.AddModule<T>()` 添加。
+- 启动链路：`Entry.Awake → ErameRuntime.Start(this)`，全程静态调用、无反射。
+- 本示例不注册任何服务：需要时在 `Configure` 里 `builder.AddModule<LogModule>()`（或其他按能力域拆分的模块），或直接 `RegisterSingleton` 自己的实现。
+- 模块由「`Erame/示例/生成项目（按需）`」生成，一个能力域一个文件，可删可改。
 - 入口自动 `DontDestroyOnLoad`，重复实例会被销毁。
+

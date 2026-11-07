@@ -9,12 +9,17 @@ using Debug = UnityEngine.Debug;
 namespace Erame.Editor{
     /// <summary>框架文档入口与版本更新检查。</summary>
     public static class ErameHelpMenu{
-        [MenuItem("Erame/帮助/打开框架文档", priority = 50)]
+        [MenuItem("Erame/帮助/打开开发手册", priority = 50)]
+        public static void OpenHandbook(){
+            OpenDoc("开发手册.md");
+        }
+
+        [MenuItem("Erame/帮助/打开框架文档", priority = 51)]
         public static void OpenReadme(){
             OpenDoc("README.md");
         }
 
-        [MenuItem("Erame/帮助/打开 API 文档", priority = 51)]
+        [MenuItem("Erame/帮助/打开 API 文档", priority = 52)]
         public static void OpenApi(){
             OpenDoc("API.md");
         }

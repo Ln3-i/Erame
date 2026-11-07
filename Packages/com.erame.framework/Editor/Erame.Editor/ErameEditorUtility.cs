@@ -11,8 +11,6 @@ namespace Erame.Editor{
     /// <summary>Erame 编辑器菜单共用的查找与检查工具。</summary>
     public static class ErameEditorUtility{
         public const string FrameworkPackageName = "com.erame.framework";
-        public const string SteamPackageName = "com.erame.platform.steam";
-        public const string SteamworksPackageName = "com.rlabrecque.steamworks.net";
         public const string FrameworkPackagePath = "Packages/com.erame.framework";
 
         /// <summary>优先返回当前选中对象，其次返回工程内第一个 ErameSettings。</summary>
@@ -40,16 +38,6 @@ namespace Erame.Editor{
             var info = UnityEditor.PackageManager.PackageInfo.GetAllRegisteredPackages()
                 .FirstOrDefault(p => p.name == packageName);
             return info != null ? info.version : null;
-        }
-
-        public static bool IsPackageInstalled(string packageName){
-            return UnityEditor.PackageManager.PackageInfo.GetAllRegisteredPackages().Any(p => p.name == packageName);
-        }
-
-        public static bool HasDefineSymbol(string symbol){
-            var group = BuildPipeline.GetBuildTargetGroup(EditorUserBuildSettings.activeBuildTarget);
-            var defines = PlayerSettings.GetScriptingDefineSymbols(NamedBuildTarget.FromBuildTargetGroup(group));
-            return defines.Split(';').Any(d => d.Trim() == symbol);
         }
 
         /// <summary>当前运行中的服务容器（未运行时为 null）。直接读 ErameRuntime，无反射。</summary>

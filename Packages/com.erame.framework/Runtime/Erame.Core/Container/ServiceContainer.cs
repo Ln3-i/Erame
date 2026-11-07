@@ -35,6 +35,21 @@ namespace Erame.Core{
         /// <summary>只读诊断：按实际创建顺序返回服务类型（即初始化顺序）。</summary>
         public IReadOnlyList<Type> GetCreationOrder() => new List<Type>(_creationOrder);
 
+        // 注册来源（诊断用）：类型 -> 谁注册的（如 "InputModule"、"LogModule"）
+        private readonly Dictionary<Type, string> _registrationSources = new();
+
+        /// <summary>标记某服务的注册来源，供容器快照显示；重复标记以先到为准。</summary>
+        public void NoteRegistrationSource(Type serviceType, string source){
+            if (serviceType == null || string.IsNullOrEmpty(source)) return;
+            if (!_registrationSources.ContainsKey(serviceType)) _registrationSources[serviceType] = source;
+        }
+
+        /// <summary>只读诊断：查询服务的注册来源（模块名等），未知返回 null。</summary>
+        public string GetRegistrationSource(Type serviceType){
+            if (serviceType == null) return null;
+            return _registrationSources.TryGetValue(serviceType, out var source) ? source : null;
+        }
+
         public void RegisterSingleton<T>(T instance) where T : class{
             if (_built) throw new InvalidOperationException("Cannot register after Build().");
             var type = typeof(T);
@@ -61,6 +76,16 @@ namespace Erame.Core{
             _built = true;
         }
 
+        /// <summary>
+        /// 创建一个局级作用域：新一局/新场景可以往里注册这一局才有的服务，
+        /// 解析时自动回退到根容器；作用域 Dispose 只释放自己创建的服务，根容器单例不受影响。
+        /// 作用域可以叠加多层（scope 里再 CreateScope）。
+        /// </summary>
+        public ServiceScope CreateScope(){
+            if (_disposed) throw new InvalidOperationException("Container already disposed.");
+            return new ServiceScope(this);
+        }
+
         public void InitializeAll(){
             if (!_built) throw new InvalidOperationException("Call Build() first.");
             if (_disposed) throw new InvalidOperationException("Container already disposed.");
@@ -71,13 +96,20 @@ namespace Erame.Core{
                     Get(type);
                 }
 
-                // 第二遍：按创建顺序初始化，保证被依赖者先初始化
+                // 第二遍：按创建顺序初始化，保证被依赖者先初始化。
+                // 同一个实例可能以"具体类型 + 多个接口视图"注册多次（如 FileSaveService / ISaveService / ISaveSlotService），
+                // 这里按引用去重，Initialize 与 Dispose 都只执行一次。
+                var seen = new List<IService>();
                 foreach (var type in _creationOrder){
                     var inst = _instances[type];
-                    if (inst is IService service){
-                        service.Initialize();
-                        _initializedServices.Add(service);
-                    }
+                    if (!(inst is IService service)) continue;
+                    if (IndexOfSame(seen, service) >= 0) continue;
+
+                    // 先登记再 Initialize：Initialize 抛异常时该服务也要被回滚 Dispose，
+                    // 否则"半初始化"的服务会带着副作用残留（测试期望 B:dispose 必须出现）
+                    seen.Add(service);
+                    _initializedServices.Add(service);
+                    service.Initialize();
                 }
             }
             catch (Exception ex){
@@ -118,6 +150,20 @@ namespace Erame.Core{
             }
         }
 
+        // 供 ServiceScope 回退解析使用：作用域不能访问根容器的私有注册表，
+        // 但必须能区分"根容器没有这个服务"（继续抛 not found）与"构造失败"（向上抛）
+        internal object Resolve(Type type) => Get(type);
+
+        internal bool TryResolve(Type type, out object instance){
+            if (_instances.TryGetValue(type, out instance)) return true;
+            if (_factories.ContainsKey(type)){
+                instance = Get(type);
+                return true;
+            }
+            instance = null;
+            return false;
+        }
+
         private string BuildResolveChain(Type repeat){
             var sb = new StringBuilder();
             int start = _resolveStack.IndexOf(repeat);
@@ -139,6 +185,34 @@ namespace Erame.Core{
             return true;
         }
 
+        /// <summary>
+        /// 按初始化顺序返回所有可解析为 T 的实例（同一实例以多个接口视图注册时按引用去重）。
+        /// 供底座驱动协议（如 IFrameUpdate）使用，不暴露具体服务类型。
+        /// </summary>
+        public IReadOnlyList<T> GetAll<T>() where T : class{
+            var result = new List<T>();
+            var seen = new List<object>();
+
+            foreach (var type in _creationOrder){
+                if (!_instances.TryGetValue(type, out var instance)) continue;
+                if (!(instance is T typed)) continue;
+
+                bool duplicate = false;
+                for (int i = 0; i < seen.Count; i++){
+                    if (ReferenceEquals(seen[i], instance)){
+                        duplicate = true;
+                        break;
+                    }
+                }
+                if (duplicate) continue;
+
+                seen.Add(instance);
+                result.Add(typed);
+            }
+
+            return result;
+        }
+
         private void RollbackInitialized(){
             for (int i = _initializedServices.Count - 1; i >= 0; i--){
                 try{ _initializedServices[i].Dispose(); }
@@ -150,6 +224,14 @@ namespace Erame.Core{
         private void ReportError(string message){
             if (ErrorReporter != null) ErrorReporter(message);
             else Console.WriteLine(message);
+        }
+
+        /// <summary>按引用查找：同一个实例以多个接口视图注册时，初始化/释放阶段需要去重。</summary>
+        internal static int IndexOfSame(IReadOnlyList<IService> list, IService service){
+            for (int i = 0; i < list.Count; i++){
+                if (ReferenceEquals(list[i], service)) return i;
+            }
+            return -1;
         }
 
         public void Dispose(){
@@ -183,6 +265,7 @@ namespace Erame.Core{
             _factories.Clear();
             _registrationOrder.Clear();
             _creationOrder.Clear();
+            _registrationSources.Clear();
             _resolving.Clear();
             _resolveStack.Clear();
         }

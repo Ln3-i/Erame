@@ -1,0 +1,17 @@
+{
+  "name": "com.erame.platform.abstractions",
+  "version": "0.8.0",
+  "displayName": "Erame Platform Abstractions",
+  "description": "跨平台契约：身份、成就、统计、好友、大厅、云存档、创意工坊。",
+  "unity": "2022.3",
+  "keywords": [
+    "framework",
+    "platform",
+    "steam",
+    "epic",
+    "wegame"
+  ],
+  "author": {
+    "name": "Erame"
+  }
+}

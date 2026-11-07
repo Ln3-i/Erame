@@ -39,10 +39,13 @@ Packages/
 ```json
 {
   "dependencies": {
-    "com.erame.framework": "https://github.com/<your-account>/<your-repo>.git?path=/Packages/com.erame.framework#v0.10.0"
+    "com.erame.framework": "https://github.com/Ln3-i/Erame.git?path=/Packages/com.erame.framework#v0.10.0"
   }
 }
 ```
+
+把结尾的 `#v0.10.0` 换成 `#main` 就会跟踪最新提交（只建议在试验项目里这么用）。
+首次拉取需要能访问 GitHub；国内网络不通时可用代理，或把仓库镜像到 Gitee 后替换域名。
 
 平台能力（Steam / Epic / Wegame）不再作为框架扩展提供；需要时由开发者自行实现模块与服务。
 
